@@ -1,0 +1,17 @@
+name: Daily Draw
+on:
+  schedule:
+    - cron: "55 13 * * 1-5"  # 10:55 BRT ≈ 13:55 UTC
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick and post
+        run: |
+          NOMES=("Deise" "Alex" "Lenzi")
+          SORTEADO=$(printf "%s\n" "${NOMES[@]}" | shuf -n 1)
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
+            "$SLACK_WEBHOOK_URL"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
