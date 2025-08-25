@@ -2,6 +2,7 @@ name: Daily Draw
 on:
   schedule:
     - cron: "55 13 * * 1-5"  # 10:55 BRT ≈ 13:55 UTC
+  workflow_dispatch:
 jobs:
   run:
     runs-on: ubuntu-latest
