@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Pick and post
         run: |
-          NOMES=("Deise" "Alex" "Lenzi")
+          NOMES=("Carletto", "Deise" "Alex" "Lenzi")
           SORTEADO=$(printf "%s\n" "${NOMES[@]}" | shuf -n 1)
           curl -s -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
