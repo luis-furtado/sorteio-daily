@@ -1,7 +1,7 @@
 name: Daily Draw
 on:
   schedule:
-    - cron: "00 13 * * 1-5"  # 10:55 BRT ≈ 13:58 UTC
+    - cron: "30 12 * * 1-5"  # 09:30 BRT
   workflow_dispatch:
 jobs:
   run:
