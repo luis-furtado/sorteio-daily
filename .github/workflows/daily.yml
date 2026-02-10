@@ -1,7 +1,7 @@
 name: Daily Draw
 on:
   schedule:
-    - cron: "30 12 * * 1-5"  # 09:30 BRT
+    - cron: "00 12 * * 1-5"  # 09:00 BRT
   workflow_dispatch:
 jobs:
   run:
