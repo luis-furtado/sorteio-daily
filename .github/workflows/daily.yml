@@ -7,12 +7,29 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore draw state
+        uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: .sorteio-state
+          key: sorteio-daily-state
+
       - name: Pick and post
+        id: pick
         run: |
-          NOMES=("Carletto" "Deise" "Alex" "Luis Lenzi" "Luis Furtado" "Eder" "Leo")
-          SORTEADO=$(printf "%s\n" "${NOMES[@]}" | shuf -n 1)
+          chmod +x sorteio.sh
+          SORTEADO=$(./sorteio.sh)
           curl -s -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
             "$SLACK_WEBHOOK_URL"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Save draw state
+        uses: actions/cache/save@v4
+        if: success()
+        with:
+          path: .sorteio-state
+          key: sorteio-daily-state
