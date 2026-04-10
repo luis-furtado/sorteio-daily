@@ -14,7 +14,7 @@ jobs:
         id: cache
         with:
           path: .sorteio-state
-          key: sorteio-daily-state-${{ github.run_id }}
+          key: sorteio-daily-state
 
       - name: Pick and post
         id: pick
@@ -32,4 +32,4 @@ jobs:
         if: success()
         with:
           path: .sorteio-state
-          key: sorteio-daily-state-${{ github.run_id }}
+          key: sorteio-daily-state
