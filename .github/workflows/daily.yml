@@ -1,35 +1,71 @@
 name: Daily Draw
+
 on:
   schedule:
     - cron: "00 12 * * 1-5"  # 09:00 BRT
   workflow_dispatch:
+
+# Cada job é independente: cache, membros e webhook separados por time.
+# Secrets necessários no repositório:
+#   SLACK_WEBHOOK_URL_LMS   → webhook do canal do time LMS
+#   SLACK_WEBHOOK_URL_ADMIN → webhook do canal do time Admin
+
 jobs:
-  run:
+
+  sorteio-lms:
+    name: Draw - Canais
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore draw state
+      - name: Restore draw state (LMS)
         uses: actions/cache/restore@v4
-        id: cache
         with:
-          path: .sorteio-state
-          key: sorteio-daily-state
+          path: .sorteio-state/team-plus-canais
+          key: sorteio-daily-state-lms
 
-      - name: Pick and post
-        id: pick
+      - name: Pick and post (LMS)
         run: |
           chmod +x sorteio.sh
-          SORTEADO=$(./sorteio.sh)
+          SORTEADO=$(./sorteio.sh teams/team-plus-canais.txt)
           curl -s -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
             "$SLACK_WEBHOOK_URL"
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_LMS }}
 
-      - name: Save draw state
+      - name: Save draw state (LMS)
         uses: actions/cache/save@v4
         if: success()
         with:
-          path: .sorteio-state
-          key: sorteio-daily-state
+          path: .sorteio-state/team-plus-canais
+          key: sorteio-daily-state-lms
+
+  sorteio-admin:
+    name: Draw - EI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore draw state (Admin)
+        uses: actions/cache/restore@v4
+        with:
+          path: .sorteio-state/team-plus-ei
+          key: sorteio-daily-state-admin
+
+      - name: Pick and post (Admin)
+        run: |
+          chmod +x sorteio.sh
+          SORTEADO=$(./sorteio.sh teams/team-plus-ei.txt)
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
+            "$SLACK_WEBHOOK_URL"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_ADMIN }}
+
+      - name: Save draw state (Admin)
+        uses: actions/cache/save@v4
+        if: success()
+        with:
+          path: .sorteio-state/team-plus-ei
+          key: sorteio-daily-state-admin

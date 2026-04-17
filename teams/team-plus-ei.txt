@@ -1,0 +1,8 @@
+# Time Plus EI — um participante por linha
+# Linhas começando com # são ignoradas
+Halisson
+Michael
+Ikeda
+Victor
+Luís
+Eder
