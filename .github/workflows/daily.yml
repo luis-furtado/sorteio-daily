@@ -22,7 +22,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .sorteio-state/team-plus-canais
-          key: sorteio-daily-state-lms
+          key: sorteio-daily-state-lms-${{ github.run_id }}
+          restore-keys: sorteio-daily-state-lms-
 
       - name: Pick and post (LMS)
         run: |
@@ -39,7 +40,7 @@ jobs:
         if: success()
         with:
           path: .sorteio-state/team-plus-canais
-          key: sorteio-daily-state-lms
+          key: sorteio-daily-state-lms-${{ github.run_id }}
 
   sorteio-admin:
     name: Draw - EI
@@ -51,7 +52,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .sorteio-state/team-plus-ei
-          key: sorteio-daily-state-admin
+          key: sorteio-daily-state-admin-${{ github.run_id }}
+          restore-keys: sorteio-daily-state-admin-
 
       - name: Pick and post (Admin)
         run: |
@@ -68,4 +70,4 @@ jobs:
         if: success()
         with:
           path: .sorteio-state/team-plus-ei
-          key: sorteio-daily-state-admin
+          key: sorteio-daily-state-admin-${{ github.run_id }}
