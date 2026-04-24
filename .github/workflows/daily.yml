@@ -5,10 +5,9 @@ on:
     - cron: "00 12 * * 1-5"  # 09:00 BRT
   workflow_dispatch:
 
-# Cada job é independente: cache, membros e webhook separados por time.
-# Secrets necessários no repositório:
-#   SLACK_WEBHOOK_URL_PLUS_CANAIS   → webhook do canal do time LMS
-#   SLACK_WEBHOOK_URL_PLUS_EI → webhook do canal do time Admin
+# Secrets necessários:
+#   SLACK_WEBHOOK_URL_PLUS_CANAIS
+#   SLACK_WEBHOOK_URL_PLUS_EI
 
 jobs:
 
@@ -17,13 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Restore draw state (LMS)
-        uses: actions/cache/restore@v4
-        with:
-          path: .sorteio-state/team-plus-canais
-          key: sorteio-daily-state-lms-${{ github.run_id }}
-          restore-keys: sorteio-daily-state-lms-
 
       - name: Pick and post (LMS)
         run: |
@@ -35,25 +27,11 @@ jobs:
         env:
           SLACK_WEBHOOK_URL_PLUS_CANAIS: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_CANAIS }}
 
-      - name: Save draw state (LMS)
-        uses: actions/cache/save@v4
-        if: success()
-        with:
-          path: .sorteio-state/team-plus-canais
-          key: sorteio-daily-state-lms-${{ github.run_id }}
-
   sorteio-admin:
     name: Draw - EI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Restore draw state (Admin)
-        uses: actions/cache/restore@v4
-        with:
-          path: .sorteio-state/team-plus-ei
-          key: sorteio-daily-state-admin-${{ github.run_id }}
-          restore-keys: sorteio-daily-state-admin-
 
       - name: Pick and post (Admin)
         run: |
@@ -64,10 +42,3 @@ jobs:
             "$SLACK_WEBHOOK_URL_PLUS_EI"
         env:
           SLACK_WEBHOOK_URL_PLUS_EI: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_EI }}
-
-      - name: Save draw state (Admin)
-        uses: actions/cache/save@v4
-        if: success()
-        with:
-          path: .sorteio-state/team-plus-ei
-          key: sorteio-daily-state-admin-${{ github.run_id }}
