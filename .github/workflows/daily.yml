@@ -2,43 +2,51 @@ name: Daily Draw
 
 on:
   schedule:
-    - cron: "00 12 * * 1-5"  # 09:00 BRT
+    - cron: "00 10 * * 1-5"  # 07:00 BRT
   workflow_dispatch:
 
 # Secrets necessários:
 #   SLACK_WEBHOOK_URL_PLUS_CANAIS
 #   SLACK_WEBHOOK_URL_PLUS_EI
 
+permissions:
+  contents: write
+
 jobs:
 
-  sorteio-lms:
-    name: Draw - Canais
+  sorteio:
+    name: Draw & Post
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Pick and post (LMS)
+      - name: Pick members
+        id: pick
         run: |
           chmod +x sorteio.sh
-          SORTEADO=$(./sorteio.sh teams/team-plus-canais.txt)
+          echo "canais=$(./sorteio.sh teams/team-plus-canais.txt)" >> "$GITHUB_OUTPUT"
+          echo "ei=$(./sorteio.sh teams/team-plus-ei.txt)"         >> "$GITHUB_OUTPUT"
+
+      - name: Persist state
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .sorteio-state/
+          git diff --cached --quiet || git commit -m "chore: update sorteio state [skip ci]"
+          git push
+
+      - name: Post to Slack - Canais
+        run: |
           curl -s -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
+            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *${{ steps.pick.outputs.canais }}*!\"}" \
             "$SLACK_WEBHOOK_URL_PLUS_CANAIS"
         env:
           SLACK_WEBHOOK_URL_PLUS_CANAIS: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_CANAIS }}
 
-  sorteio-admin:
-    name: Draw - EI
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Pick and post (Admin)
+      - name: Post to Slack - EI
         run: |
-          chmod +x sorteio.sh
-          SORTEADO=$(./sorteio.sh teams/team-plus-ei.txt)
           curl -s -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *$SORTEADO*!\"}" \
+            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *${{ steps.pick.outputs.ei }}*!\"}" \
             "$SLACK_WEBHOOK_URL_PLUS_EI"
         env:
           SLACK_WEBHOOK_URL_PLUS_EI: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_EI }}
