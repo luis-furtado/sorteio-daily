@@ -2,7 +2,7 @@ name: Daily Draw
 
 on:
   schedule:
-    - cron: "00 10 * * 1-5"  # 07:00 BRT
+    - cron: "30 9 * * 1-5"  # 07:00 BRT
   workflow_dispatch:
 
 # Secrets necessários:
