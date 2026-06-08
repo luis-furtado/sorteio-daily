@@ -1,8 +1,7 @@
 # Time Canais Plus — um participante por linha
 # Linhas começando com # são ignoradas
 Carletto
-Deise
+Halisson
 Alex
-Luis Lenzi
 Luis Furtado
 Eder
