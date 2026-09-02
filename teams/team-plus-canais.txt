@@ -2,6 +2,6 @@
 # Linhas começando com # são ignoradas
 Carletto
 Victhor
-Alex
+Beatriz
 Luís
 Eder
