@@ -1,52 +1,114 @@
 name: Daily Draw
-
+ 
 on:
-  schedule:
-    - cron: "30 8 * * 1-5"  
+  # Trigger primário: cron externo chama a API do GitHub (dispara em segundos).
   workflow_dispatch:
-
+  # Fallback, caso o agendador externo caia. Absorve até 5h de atraso do scheduler.
+  schedule:
+    - cron: "0 7 * * 1-5"     # 04:00 BRT
+ 
 # Secrets necessários:
 #   SLACK_WEBHOOK_URL_PLUS_CANAIS
 #   SLACK_WEBHOOK_URL_PLUS_EI
-
+ 
+env:
+  POST_TIME: "09:00"          # horário alvo em America/Sao_Paulo
+ 
 permissions:
   contents: write
-
+ 
+concurrency:
+  group: daily-draw
+  cancel-in-progress: false   # enfileira; o re-check pós-sleep evita post duplicado
+ 
 jobs:
-
   sorteio:
     name: Draw & Post
     runs-on: ubuntu-latest
+    timeout-minutes: 330      # 5h30 — abaixo do teto de 6h do runner
     steps:
       - uses: actions/checkout@v4
-
+ 
+      - name: Guard - dia útil e não postado hoje
+        id: guard
+        run: |
+          TODAY=$(TZ=America/Sao_Paulo date +%F)
+          DOW=$(TZ=America/Sao_Paulo date +%u)
+          echo "Agora em SP: $(TZ=America/Sao_Paulo date '+%a %d/%m %H:%M')"
+          echo "today=$TODAY" >> "$GITHUB_OUTPUT"
+ 
+          if [ "$DOW" -gt 5 ]; then
+            echo "Fim de semana em SP. Encerrando."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "$(cat .sorteio-state/last-post 2>/dev/null)" = "$TODAY" ]; then
+            echo "Já postado hoje ($TODAY). Encerrando."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+ 
+      - name: Wait until POST_TIME
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          TARGET=$(TZ=America/Sao_Paulo date -d "today $POST_TIME" +%s)
+          DELTA=$(( TARGET - $(date +%s) ))
+          if [ "$DELTA" -gt 0 ]; then
+            echo "Dormindo ${DELTA}s ($((DELTA/60))min) até $POST_TIME BRT"
+            sleep "$DELTA"
+          else
+            echo "::warning::Scheduler atrasou $(( -DELTA / 60 ))min. Postando agora."
+          fi
+ 
+      - name: Re-check após o sleep
+        if: steps.guard.outputs.skip == 'false'
+        id: recheck
+        run: |
+          git fetch --quiet origin main
+          if git show origin/main:.sorteio-state/last-post 2>/dev/null | grep -qx "${{ steps.guard.outputs.today }}"; then
+            echo "::warning::Outra execução já postou hoje durante o sleep. Encerrando."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          git pull --rebase --autostash origin main
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+ 
       - name: Pick members
+        if: steps.recheck.outputs.skip == 'false'
         id: pick
         run: |
-          chmod +x sorteio.sh
           echo "canais=$(./sorteio.sh teams/team-plus-canais.txt)" >> "$GITHUB_OUTPUT"
           echo "ei=$(./sorteio.sh teams/team-plus-ei.txt)"         >> "$GITHUB_OUTPUT"
-
-      - name: Persist state
+ 
+      - name: Post to Slack - Portal Plus
+        if: steps.recheck.outputs.skip == 'false'
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_CANAIS }}
+          PERSON: ${{ steps.pick.outputs.canais }}
         run: |
+          PAYLOAD=$(jq -n --arg t ":alarm_clock: Daily: hoje quem puxa é *${PERSON}*!" '{text:$t}')
+          curl -sS --fail-with-body -X POST \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "$PAYLOAD" "$WEBHOOK"
+ 
+      - name: Post to Slack - EI
+        if: steps.recheck.outputs.skip == 'false'
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_EI }}
+          PERSON: ${{ steps.pick.outputs.ei }}
+        run: |
+          PAYLOAD=$(jq -n --arg t ":alarm_clock: Daily: hoje quem puxa é *${PERSON}*!" '{text:$t}')
+          curl -sS --fail-with-body -X POST \
+            -H 'Content-type: application/json; charset=utf-8' \
+            --data "$PAYLOAD" "$WEBHOOK"
+ 
+      - name: Persist state
+        if: steps.recheck.outputs.skip == 'false'
+        run: |
+          echo "${{ steps.guard.outputs.today }}" > .sorteio-state/last-post
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .sorteio-state/
-          git diff --cached --quiet || git commit -m "chore: update sorteio state [skip ci]"
-          git push
-
-      - name: Post to Slack - Canais
-        run: |
-          curl -s -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *${{ steps.pick.outputs.canais }}*!\"}" \
-            "$SLACK_WEBHOOK_URL_PLUS_CANAIS"
-        env:
-          SLACK_WEBHOOK_URL_PLUS_CANAIS: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_CANAIS }}
-
-      - name: Post to Slack - EI
-        run: |
-          curl -s -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":alarm_clock: Daily: hoje quem puxa é *${{ steps.pick.outputs.ei }}*!\"}" \
-            "$SLACK_WEBHOOK_URL_PLUS_EI"
-        env:
-          SLACK_WEBHOOK_URL_PLUS_EI: ${{ secrets.SLACK_WEBHOOK_URL_PLUS_EI }}
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update sorteio state [skip ci]"
+            git pull --rebase --autostash origin main
+            git push origin main
+          fi
