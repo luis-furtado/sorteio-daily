@@ -2,6 +2,7 @@
 # Linhas começando com # são ignoradas
 Carletto
 Victhor
+Ikeda
 Beatriz
 Luís
 Eder
